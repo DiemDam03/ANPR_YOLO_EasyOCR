@@ -3,7 +3,7 @@ import cv2
 from ultralytics import YOLO
 
 # Load the YOLO model
-model = YOLO("C:/Users/buiph/Desktop/New PyAI/runs/detect/train/weights/best.pt")
+model = YOLO("./ver1/PyAI/First.pt")
 # Open the video file
 cap = cv2.VideoCapture(0)
 

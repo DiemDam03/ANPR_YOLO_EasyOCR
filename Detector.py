@@ -1,10 +1,10 @@
 import cv2
-import pytesseract
 import numpy as np
 from ultralytics import YOLO
+import easyocr
 
-# Ensure Tesseract is installed and configured
-pytesseract.pytesseract.tesseract_cmd = r"C:/Program Files/Tesseract-OCR/tesseract.exe"
+# Initialize EasyOCR reader
+reader = easyocr.Reader(['vi'])
 # Load the YOLO model
 model = YOLO("./ver1/PyAI/First.pt")
 
@@ -12,9 +12,7 @@ model = YOLO("./ver1/PyAI/First.pt")
 cap = cv2.VideoCapture(0)
 
 def preprocess_for_ocr(plate_img):
-    """
-    Preprocess the license plate image for better OCR accuracy
-    """
+
     # Convert to grayscale
     gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
     
@@ -27,21 +25,22 @@ def preprocess_for_ocr(plate_img):
     return gray
 
 def extract_license_plate_text(plate_img):
-    """
-    Extract text from a license plate image
-    """
+
     # Preprocess the image
     processed_img = preprocess_for_ocr(plate_img)
     
-    # Perform OCR
-    try:
-        # Configure Tesseract to focus on alphanumeric characters
-        ocr_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-        license_text = pytesseract.image_to_string(processed_img, config=ocr_config).strip()
-        return license_text
-    except Exception as e:
-        print(f"OCR Error: {e}")
-        return ""
+    # Convert to RGB for EasyOCR
+    processed_img_rgb = cv2.cvtColor(processed_img, cv2.COLOR_GRAY2RGB)
+
+    results = reader.readtext(processed_img_rgb)
+    # coord = results[0] 
+    # text = results[1]
+    # conf = results[2]
+
+    if results:
+        text, confidence = results[0][1], results[0][2]
+        if confidence > 0.5:
+            return text.strip()
 
 # Loop through the video frames
 while cap.isOpened():
@@ -50,7 +49,7 @@ while cap.isOpened():
 
     if success:
         # Run YOLO inference on the frame
-        results = model(frame, stream=True, conf=0.60, iou=0.70, vid_stride=3)
+        results = model(frame, stream=True, conf=0.60, iou=0.70, vid_stride=5)
 
         # Visualize the results on the frame
         for r in results:
@@ -69,7 +68,7 @@ while cap.isOpened():
                 plate_img = frame[y1:y2, x1:x2]
                 
                 # Attempt to read license plate text if the class matches license plate
-                if cls_id == 0:  # Assuming 0 is the class ID for license plates
+                if cls_id == 0:  # 0 is the class ID for license plates
                     license_text = extract_license_plate_text(plate_img)
                     
                     # Display the license plate text

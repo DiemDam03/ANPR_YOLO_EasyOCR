@@ -4,24 +4,33 @@ from ultralytics import YOLO
 import easyocr
 
 # Initialize EasyOCR reader
-reader = easyocr.Reader(['vi'])
+reader = easyocr.Reader(['vi', 'en'])  
 # Load the YOLO model
 model = YOLO("./ver1/PyAI/First.pt")
 
 # Open the video capture
 cap = cv2.VideoCapture(0)
 
-def preprocess_for_ocr(plate_img):
 
-    # Convert to grayscale
+def preprocess_for_ocr(plate_img):
+    # Resize 
+    plate_img = cv2.resize(plate_img, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_LINEAR)
+
+    # Denoise
+    plate_img = cv2.fastNlMeansDenoisingColored(plate_img)
+
+    # Enhance 
+    plate_img = cv2.detailEnhance(plate_img, sigma_s=10, sigma_r=0.15)
+
+    # Grayscale #Threshold
     gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
-    
-    # Apply thresholding to preprocess the image
+
+    # Threshold
     gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    
-    # Optional: Apply some denoising
-    gray = cv2.medianBlur(gray, 3)
-    
+
+    # Blur
+    # gray = cv2.medianBlur(gray, 3)
+
     return gray
 
 def extract_license_plate_text(plate_img):
@@ -49,7 +58,7 @@ while cap.isOpened():
 
     if success:
         # Run YOLO inference on the frame
-        results = model(frame, stream=True, conf=0.60, iou=0.70, vid_stride=5)
+        results = model(frame, stream=True, conf=0.60, iou=0.70, vid_stride=2)
 
         # Visualize the results on the frame
         for r in results:
